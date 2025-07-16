@@ -1,31 +1,330 @@
 ---
-title: 'Using MDX'
+title: 'Proxy 实现微前端'
 description: 'Lorem ipsum dolor sit amet'
-pubDate: 'Jun 01 2024'
+pubDate: 'Jul 16 2025'
 heroImage: '../../assets/blog-placeholder-5.jpg'
 ---
 
-This theme comes with the [@astrojs/mdx](https://docs.astro.build/en/guides/integrations-guide/mdx/) integration installed and configured in your `astro.config.mjs` config file. If you prefer not to use MDX, you can disable support by removing the integration from your config file.
+-----
 
-## Why MDX?
+好的，这是一个使用 **Proxy** 实现简易微前端沙箱的 Demo。这个 Demo 主要演示了如何通过 Proxy 来隔离不同微应用的全局变量访问。
 
-MDX is a special flavor of Markdown that supports embedded JavaScript & JSX syntax. This unlocks the ability to [mix JavaScript and UI Components into your Markdown content](https://docs.astro.build/en/guides/markdown-content/#mdx-features) for things like interactive charts or alerts.
+为了简化，这个 Demo 会包含：
 
-If you have existing content authored in MDX, this integration will hopefully make migrating to Astro a breeze.
+1.  **一个主应用 (Host App)**：负责加载和卸载微应用。
+2.  **一个微应用 (Micro App)**：在沙箱中运行，并尝试修改全局变量。
 
-## Example
+### 核心原理
 
-Here is how you import and use a UI component inside of MDX.  
-When you open this page in the browser, you should see the clickable button below.
+我们将创建一个 `Sandbox` 类，它会在微应用加载时，用 Proxy 劫持 `window` 对象的访问。微应用对 `window` 的所有操作都只会在这个 Proxy 对象上生效，而不会影响真实的 `window` 对象。
 
-import HeaderLink from '../../components/HeaderLink.astro';
+-----
 
-<HeaderLink href="#" onclick="alert('clicked!')">
-	Embedded component in MDX
-</HeaderLink>
+### 微前端 Proxy 沙箱 Demo
 
-## More Links
+#### 文件结构
 
-- [MDX Syntax Documentation](https://mdxjs.com/docs/what-is-mdx)
-- [Astro Usage Documentation](https://docs.astro.build/en/guides/markdown-content/#markdown-and-mdx-pages)
-- **Note:** [Client Directives](https://docs.astro.build/en/reference/directives-reference/#client-directives) are still required to create interactive components. Otherwise, all components in your MDX will render as static HTML (no JavaScript) by default.
+```
+.
+├── index.html
+├── main.js       // 主应用逻辑
+└── micro-app.js  // 微应用逻辑
+```
+
+#### 1\. `index.html` (主页面)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Micro Frontend Proxy Sandbox Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #app-container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 150px;
+        }
+        button { margin-right: 10px; padding: 8px 15px; cursor: pointer; }
+        .log-item { margin-bottom: 5px; font-family: monospace; }
+        .log-container {
+            border: 1px dashed #eee;
+            padding: 10px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>微前端 Proxy 沙箱 Demo</h1>
+
+    <button id="loadApp">加载微应用</button>
+    <button id="unloadApp">卸载微应用</button>
+    <button id="checkGlobal">检查主应用全局变量</button>
+
+    <div id="app-container">
+        <h2>微应用区域</h2>
+        <div id="micro-app-root"></div>
+    </div>
+
+    <h3>日志输出</h3>
+    <div class="log-container" id="log"></div>
+
+    <script src="main.js"></script>
+</body>
+</html>
+```
+
+#### 2\. `main.js` (主应用逻辑)
+
+这是核心部分，包含了 `Sandbox` 类的实现和主应用的逻辑。
+
+```javascript
+// main.js
+
+// 简易日志记录函数
+const logContainer = document.getElementById('log');
+function log(message, type = 'info') {
+    const p = document.createElement('p');
+    p.classList.add('log-item', type);
+    p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+    logContainer.prepend(p); // 新日志显示在顶部
+}
+
+// 假设主应用有一个全局变量
+window.mainGlobalVar = "我是主应用定义的全局变量";
+log(`主应用初始化: window.mainGlobalVar = "${window.mainGlobalVar}"`);
+
+
+/**
+ * 简易 Proxy 沙箱实现
+ */
+class Sandbox {
+    constructor() {
+        this.proxyWindow = Object.create(null); // 创建一个纯净的对象作为代理的上下文
+        this.fakeWindow = new Proxy(this.proxyWindow, {
+            get: (target, prop) => {
+                // 优先从沙箱内获取属性
+                if (prop in target) {
+                    return target[prop];
+                }
+                // 如果沙箱内没有，则从真实的 window 对象获取
+                const value = window[prop];
+                // 如果是函数，需要绑定到 window 上，避免上下文丢失
+                if (typeof value === 'function') {
+                    return value.bind(window);
+                }
+                return value;
+            },
+            set: (target, prop, value) => {
+                // 将所有对 window 的修改都作用到沙箱内部的 proxyWindow 对象上
+                target[prop] = value;
+                log(`沙箱修改: window.${String(prop)} = "${String(value)}"`, 'warn');
+                return true;
+            },
+            has: (target, prop) => {
+                // 解决 with (sandboxWindow) {} 语句下变量查找的问题
+                return prop in target || prop in window;
+            }
+            // deleteProperty 也可以实现，这里简化
+        });
+
+        // 存储沙箱内的变量，以便在 deactivate 时清除
+        this.modifiedProps = new Set();
+        this.active = false;
+        log('沙箱初始化完成');
+    }
+
+    /**
+     * 激活沙箱
+     * 返回代理的 window 对象，供微应用使用
+     */
+    activate() {
+        if (this.active) {
+            log('沙箱已激活，无需重复激活。', 'error');
+            return this.fakeWindow;
+        }
+        this.active = true;
+        log('沙箱已激活！');
+        return this.fakeWindow;
+    }
+
+    /**
+     * 禁用沙箱
+     * 清除沙箱内对全局变量的修改
+     */
+    deactivate() {
+        if (!this.active) {
+            log('沙箱未激活，无需禁用。', 'error');
+            return;
+        }
+        // 清理沙箱内对 window 的修改 (这里简单地清空 proxyWindow)
+        // 实际应用中需要更精细的还原机制，例如保存快照
+        for (const prop in this.proxyWindow) {
+            delete this.proxyWindow[prop];
+        }
+        this.active = false;
+        log('沙箱已禁用，沙箱内修改的全局变量已清除。');
+    }
+}
+
+// 全局沙箱实例
+let currentSandbox = null;
+let microAppInstance = null; // 用于存储微应用的执行函数
+
+// 加载微应用
+document.getElementById('loadApp').addEventListener('click', async () => {
+    if (microAppInstance) {
+        log('微应用已加载，请先卸载。', 'error');
+        return;
+    }
+
+    log('开始加载微应用...');
+
+    // 1. 创建沙箱实例
+    currentSandbox = new Sandbox();
+    const sandboxWindow = currentSandbox.activate();
+
+    // 2. 加载微应用脚本
+    try {
+        const response = await fetch('micro-app.js');
+        const code = await response.text();
+
+        // 将微应用的代码包裹在一个立即执行函数中，
+        // 并将沙箱的 window 对象作为上下文传递进去。
+        // 这里使用 with 语句来改变代码块内部的作用域，
+        // 使得对 window 的访问实际是访问 sandboxWindow。
+        // 注意：生产环境中通常会使用 Function 构造函数或 eval，并传递参数，
+        // 避免 with 语句带来的潜在性能和安全性问题。
+        const wrappedCode = `
+            (function(window, document) {
+                // 通过 with 语句改变作用域，让内部对 window 的访问劫持到 sandboxWindow
+                with (window) {
+                    ${code}
+                }
+            })(sandboxWindow, document); // 传递沙箱的 window 和真实的 document
+        `;
+
+        // 执行微应用代码
+        // eval 在这里用于演示，实际项目中需要更安全的执行方式
+        microAppInstance = eval(wrappedCode);
+
+        log('微应用加载并运行完成！', 'success');
+        document.getElementById('micro-app-root').innerHTML = "<span>微应用已成功加载并修改了沙箱变量！请检查日志。</span>";
+
+    } catch (error) {
+        log(`加载微应用失败: ${error.message}`, 'error');
+        console.error('加载微应用错误:', error);
+    }
+});
+
+// 卸载微应用
+document.getElementById('unloadApp').addEventListener('click', () => {
+    if (currentSandbox) {
+        currentSandbox.deactivate();
+        currentSandbox = null;
+        microAppInstance = null;
+        document.getElementById('micro-app-root').innerHTML = ""; // 清空微应用内容
+        log('微应用已卸载。', 'success');
+    } else {
+        log('没有正在运行的微应用。', 'error');
+    }
+});
+
+// 检查主应用全局变量
+document.getElementById('checkGlobal').addEventListener('click', () => {
+    log(`主应用当前状态: window.mainGlobalVar = "${window.mainGlobalVar}"`);
+    log(`主应用当前状态: window.microAppGlobalVar (是否存在) = ${'microAppGlobalVar' in window}`);
+    if ('microAppGlobalVar' in window) {
+        log(`主应用当前状态: window.microAppGlobalVar = "${window.microAppGlobalVar}"`);
+    }
+});
+
+log('主应用已就绪。');
+```
+
+#### 3\. `micro-app.js` (微应用逻辑)
+
+这个文件模拟一个微应用的代码。
+
+```javascript
+// micro-app.js
+
+// 微应用尝试定义自己的全局变量
+window.microAppGlobalVar = "我是微应用定义的变量！";
+console.log('微应用内部: window.microAppGlobalVar =', window.microAppGlobalVar);
+
+// 微应用尝试修改主应用的全局变量 (如果它能访问到的话)
+window.mainGlobalVar = "微应用尝试修改主应用的变量，但应该被隔离！";
+console.log('微应用内部: window.mainGlobalVar (尝试修改后) =', window.mainGlobalVar);
+
+// 微应用定义一个函数
+window.microAppFunction = function() {
+    console.log('微应用函数被调用。');
+    return "Hello from Micro App!";
+};
+
+// 尝试在 DOM 中渲染内容
+const root = document.getElementById('micro-app-root');
+if (root) {
+    const p = document.createElement('p');
+    p.textContent = `我是微应用的内容。我的全局变量: ${window.microAppGlobalVar}`;
+    root.appendChild(p);
+} else {
+    console.warn('micro-app-root 元素未找到，微应用无法渲染内容。');
+}
+
+// 返回一个函数，方便主应用在卸载时清理
+// 在这个简单的 demo 中，其实不需要返回，因为代码执行后就生效了
+// 但在真实的微前端框架中，每个微应用通常会暴露一个生命周期钩子（如mount/unmount）
+// return function unmount() {
+//     // 清理微应用在 DOM 上的痕迹等
+//     console.log('微应用卸载函数被调用。');
+// };
+```
+
+-----
+
+### 如何运行
+
+1.  将上述三个文件分别保存为 `index.html`, `main.js`, `micro-app.js`。
+2.  在浏览器中打开 `index.html`。
+3.  点击 "**加载微应用**" 按钮。观察日志，你会看到微应用成功运行，并且试图修改全局变量。
+4.  点击 "**检查主应用全局变量**" 按钮。你会发现 `window.mainGlobalVar` 没有被微应用修改，并且 `window.microAppGlobalVar` 在主应用的真实 `window` 上是不存在的。这证明了沙箱的隔离作用。
+5.  点击 "**卸载微应用**" 按钮，然后再次点击 "**检查主应用全局变量**"，会发现沙箱对 `window.microAppGlobalVar` 的修改也已经消失。
+
+### Demo 解析
+
+  * **`Sandbox` 类**：
+      * `constructor`：创建 `this.proxyWindow` 作为微应用所有全局变量修改的“缓存区”。然后创建 `Proxy` 对象 `this.fakeWindow`，它代理了 `this.proxyWindow`。
+      * `get` 陷阱：当微应用尝试读取 `window` 上的属性时，`Proxy` 会首先在 `this.proxyWindow` (沙箱内部) 查找。如果找到，就返回沙箱内部的值。如果沙箱内部没有，就去真实的 `window` 对象上查找并返回。**注意**：对于函数，需要 `bind(window)`，以确保函数执行时的 `this` 上下文是真实的 `window`。
+      * `set` 陷阱：当微应用尝试写入 `window` 上的属性时，`Proxy` 会将修改**只**写入到 `this.proxyWindow` 上，而**不会**影响真实的 `window`。
+      * `has` 陷阱：处理 `with` 语句时的变量查找逻辑，确保在 `with (sandboxWindow)` 内部也能正确地查找变量。
+      * `activate()`：返回代理的 `window` 对象供微应用使用。
+      * `deactivate()`：清空 `this.proxyWindow`，从而“撤销”微应用在沙箱内的所有全局变量修改。
+  * **加载微应用**：
+      * 主应用创建 `Sandbox` 实例，并获取到 `sandboxWindow`。
+      * 通过 `fetch` 加载 `micro-app.js` 的代码。
+      * 使用 `eval` 和 `with` 语句将微应用代码包裹起来，并传入 `sandboxWindow`。这样，微应用内部对 `window` 的所有操作都会被劫持到 `sandboxWindow` 上。
+  * **隔离效果**：
+      * 当你加载微应用后，它会尝试设置 `window.microAppGlobalVar` 和修改 `window.mainGlobalVar`。
+      * 但在主应用点击“检查主应用全局变量”时，你会发现真实的 `window.mainGlobalVar` 并没有被修改，并且 `window.microAppGlobalVar` 也不存在于真实的 `window` 上。这正是 Proxy 沙箱的隔离效果。
+
+### 局限性与改进
+
+这个 Demo 是一个非常简化的 Proxy 沙箱实现。真实的微前端框架（如 Qiankun）会有更复杂和完善的沙箱机制，包括：
+
+1.  **更完善的 `Proxy` 陷阱**：除了 `get` 和 `set`，还会处理 `deleteProperty`、`defineProperty` 等。
+2.  **`document` 对象的代理**：不仅 `window`，对 `document` 的操作（如 `document.createElement`, `document.getElementById`）也需要被代理，以确保微应用只在自己的容器内操作 DOM。
+3.  **事件监听处理**：微应用可能会添加全局事件监听器 (`window.addEventListener`)，需要在沙箱卸载时统一移除，避免内存泄漏。
+4.  **定时器处理**：`setTimeout` 和 `setInterval` 也需要被劫持，以便在微应用卸载时清除所有未完成的定时器。
+5.  **样式隔离**：这个 Demo 没有涉及样式隔离，实际应用中通常会结合 Shadow DOM 或 CSS Modules 等方案。
+6.  **ESM 模块支持**：真实场景下微应用通常是 ESM 模块，需要构建工具和加载器配合。
+7.  **`with` 语句的替代**：虽然 `with` 语句方便演示，但在实际生产环境中，由于其性能和安全性考虑，通常会使用 `Function` 构造函数或 `eval` 并传递参数的方式来改变作用域。
+
+通过这个 Demo，你应该能对微前端沙箱中 Proxy 的基本原理有一个清晰的理解。
