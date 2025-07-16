@@ -153,6 +153,4 @@ function deepMerge<T extends Record<string, any>>(a: T, b: Partial<T>): T
 
 ---
 
-如需每个代码题的**参考实现 / 单元测试 / 深度讲解**，欢迎继续索取！
-
 
