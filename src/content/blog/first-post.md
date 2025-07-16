@@ -1,16 +1,158 @@
 ---
-title: 'First post'
+title: 'web front end quesitons'
 description: 'Lorem ipsum dolor sit amet'
-pubDate: 'Jul 08 2022'
-heroImage: '../../assets/blog-placeholder-3.jpg'
+pubDate: 'July 08 2025'
+heroImage: '../../assets/first-blog.png'
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vitae ultricies leo integer malesuada nunc vel risus commodo viverra. Adipiscing enim eu turpis egestas pretium. Euismod elementum nisi quis eleifend quam adipiscing. In hac habitasse platea dictumst vestibulum. Sagittis purus sit amet volutpat. Netus et malesuada fames ac turpis egestas. Eget magna fermentum iaculis eu non diam phasellus vestibulum lorem. Varius sit amet mattis vulputate enim. Habitasse platea dictumst quisque sagittis. Integer quis auctor elit sed vulputate mi. Dictumst quisque sagittis purus sit amet.
+下面是一个 **≥1 小时的字节跳动（ByteDance）高级前端工程师面试流程示例**，结合假设简历重点（如工程化、缓存/二次缓存、SSR、大型框架、性能、安全），在真实面经基础上，进行**多轮深入追问**，并提供**5 道高难度代码题**，侧重测试基础功与系统设计。
 
-Morbi tristique senectus et netus. Id semper risus in hendrerit gravida rutrum quisque non tellus. Habitasse platea dictumst quisque sagittis purus sit amet. Tellus molestie nunc non blandit massa. Cursus vitae congue mauris rhoncus. Accumsan tortor posuere ac ut. Fringilla urna porttitor rhoncus dolor. Elit ullamcorper dignissim cras tincidunt lobortis. In cursus turpis massa tincidunt dui ut ornare lectus. Integer feugiat scelerisque varius morbi enim nunc. Bibendum neque egestas congue quisque egestas diam. Cras ornare arcu dui vivamus arcu felis bibendum. Dignissim suspendisse in est ante in nibh mauris. Sed tempus urna et pharetra pharetra massa massa ultricies mi.
+---
 
-Mollis nunc sed id semper risus in. Convallis a cras semper auctor neque. Diam sit amet nisl suscipit. Lacus viverra vitae congue eu consequat ac felis donec. Egestas integer eget aliquet nibh praesent tristique magna sit amet. Eget magna fermentum iaculis eu non diam. In vitae turpis massa sed elementum. Tristique et egestas quis ipsum suspendisse ultrices. Eget lorem dolor sed viverra ipsum. Vel turpis nunc eget lorem dolor sed viverra. Posuere ac ut consequat semper viverra nam. Laoreet suspendisse interdum consectetur libero id faucibus. Diam phasellus vestibulum lorem sed risus ultricies tristique. Rhoncus dolor purus non enim praesent elementum facilisis. Ultrices tincidunt arcu non sodales neque. Tempus egestas sed sed risus pretium quam vulputate. Viverra suspendisse potenti nullam ac tortor vitae purus faucibus ornare. Fringilla urna porttitor rhoncus dolor purus non. Amet dictum sit amet justo donec enim.
+## 🎙️ 第一部分：项目与架构深挖（约15–20 分钟）
 
-Mattis ullamcorper velit sed ullamcorper morbi tincidunt. Tortor posuere ac ut consequat semper viverra. Tellus mauris a diam maecenas sed enim ut sem viverra. Venenatis urna cursus eget nunc scelerisque viverra mauris in. Arcu ac tortor dignissim convallis aenean et tortor at. Curabitur gravida arcu ac tortor dignissim convallis aenean et tortor. Egestas tellus rutrum tellus pellentesque eu. Fusce ut placerat orci nulla pellentesque dignissim enim sit amet. Ut enim blandit volutpat maecenas volutpat blandit aliquam etiam. Id donec ultrices tincidunt arcu. Id cursus metus aliquam eleifend mi.
+1. **简历中提到“大型低代码平台”**
 
-Tempus quam pellentesque nec nam aliquam sem. Risus at ultrices mi tempus imperdiet. Id porta nibh venenatis cras sed felis eget velit. Ipsum a arcu cursus vitae. Facilisis magna etiam tempor orci eu lobortis elementum. Tincidunt dui ut ornare lectus sit. Quisque non tellus orci ac. Blandit libero volutpat sed cras. Nec tincidunt praesent semper feugiat nibh sed pulvinar proin gravida. Egestas integer eget aliquet nibh praesent tristique magna.
+   * Q：低代码平台的核心架构是怎样的？你负责哪些模块？
+   * **追问**：如何做组件懒加载、按需渲染、样式隔离（Shadow DOM/module CSS）？
+   * **追问**：团队协作时，如何保证组件版本一致？有无用到 module federation 或类似机制？
+
+2. **你做过“二次缓存系统”**
+
+   * 除了浏览器缓存/CDN缓存，你还做了哪些层次？（如 cache-first 模式）
+   * **追问**：二次缓存如何处理版本兼容？跨浏览器失效机制？
+   * **追问**：缓存命中 vs 回源时，上层如何触发刷新策略？
+
+3. **SSR 和 前端性能监控**
+
+   * Q：SSR 的缓存策略是怎样做的？fragment cache 有哪些关键点？
+   * **追问**：如何避免 hydration mismatch？预取策略是怎样设计的？
+   * **追问**：如何监控首屏时间？PWA下 OfflineFallback 怎么设计？
+
+4. **性能优化案例**
+
+   * 谈一个具体案例，包括监控指标、定位过程与效果
+   * 逐步追问 DOM Reflow、Memory Leak、Bundle Splitting、Tree-shaking 细节
+   * **追问**：你用 Lighthouse/CWF 监控指标的自动检测方式是什么？
+
+5. **HTTP/缓存/CORS/Security 深挖**
+
+   * Q：谈谈 HTTP 缓存策略和协商缓存流程
+   * **追问**：跨域下协商缓存是否生效？浏览器会怎样处理 opaque responses？
+   * **追问**：你用 HTTP2 或 HTTP3 有什么实战经验？有什么问题？
+   * Q：你提到做 CSP 和无感刷新 token，背后实现机制是什么？
+
+---
+
+## 🧩 第二部分：JavaScript & React 高级原理追问（20–25 分钟）
+
+1. **JS Foundation**
+
+   * Q：0.1+0.2 !== 0.3 的底层原因？如何彻底解决？
+   * Q：Event Loop 机制详细如何？举例 micro/macro task 执行顺序。
+   * **追问**：Node vs Browser Event Loop 区别在哪？
+
+2. **模块与系统设计**
+
+   * Q：你是如何实现模块联邦或沙箱加载的？
+   * **追问**：代码分包后的命名空间如何隔离？热点更新方案怎么配合版本控制？
+
+3. **React 深度探究**
+
+   * Q：useState 如何在多个 Hooks 场景下保证状态一致？
+   * **追问**：useReducer vs Redux 的选择理由？
+   * Q：Fiber 调度如何解决长任务阻塞主线程，工作循环是如何分片？
+
+4. **异步与并发模型**
+
+   * Q：谈谈最近用过哪些 web worker、shared worker 或 node worker 的使用场景
+   * **追问**：如何取消任务？如何 onmessage/onerror 做错误重试防御等？
+
+---
+
+## 💻 第三部分：5 道高难度代码题（共25–30 分钟、扩展阅读）
+
+### 1. 实现 `Promise.mapLimit`
+
+```js
+/**
+ * @param {Array} items
+ * @param {number} limit
+ * @param {function(item): Promise} fn
+ * @return Promise< results[] >
+ */
+function mapLimit(items, limit, fn) {
+  // 实现并发限制，出错应立即 reject，正确时按顺序返回结果
+}
+```
+
+* **考察点**：异步并发控制、队列、Promise 手动执行顺序
+* **拓展追问**：cancel 多余任务、task 超时机制、retry 机制
+
+---
+
+### 2. 手写深度挂载版本的 `throttle` + `debounce` 复合节流
+
+```js
+/**
+ * createRateLimiter({wait, leading, trailing})
+ * 返回节流防抖结合体，支持 cancel/flush 方法
+ */
+function createRateLimiter({wait, leading, trailing}) {
+  // ...
+}
+```
+
+* **考察点**：闭包、定时器、this 绑定、边界条件、多种参数组合处理
+* **追问**：flush 如何立即触发尾部？如何在卸载阶段 cancel？
+
+---
+
+### 3. 实现一个 `LRUCache` 支持 maxSize 和 sizeEstimator
+
+```js
+class LRUCache {
+  constructor(maxSize, sizeEstimator) { }
+  get(key)
+  set(key, value)
+}
+```
+
+* **要求**：按字节估算值大小 `sizeEstimator(value)`, 总计超过 maxSize 时开始删除最近最少使用， O(1) 复杂度
+* **拓展**：如何持久化到 IndexedDB？如何做多 tab 状态同步？
+
+---
+
+### 4. 实现 React hook `useEventCallback`（引用 stable callback）
+
+```ts
+function useEventCallback<T extends (...args: any[]) => any>(fn: T): T;
+```
+
+* **目的**：在事件中保持对最新 state/readRef，不影响依赖数组
+* **追问**：和 useCallback 有什么区别？与 useRef 实现异步效用有什么联系？
+
+---
+
+### 5. 实现一个泛型版 `deepMerge<T>`，带类型支持
+
+```ts
+function deepMerge<T extends Record<string, any>>(a: T, b: Partial<T>): T
+```
+
+* **要求**：对嵌套 object 做深度 merge，不破坏原始结构，TS类型保持正确
+* **追问**：如何处理数组、Map/Set？如何防止循环引用？
+
+---
+
+## ⏳ 结束及评估（5 分钟）
+
+* 考察点覆盖面广：**异步并发、数据结构、TS 泛型、React Hooks、HTTP 缓存、性能、安全、系统设计**
+* 追问节奏：每题后均紧接深入追问技术细节、优化方案、扩展场景
+* 时间控制灵活，根据候选人回答情况做增删
+
+---
+
+如需每个代码题的**参考实现 / 单元测试 / 深度讲解**，欢迎继续索取！
+
+
